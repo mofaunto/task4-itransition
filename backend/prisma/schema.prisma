@@ -1,0 +1,23 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id          Int     @id @default(autoincrement())
+  name        String  @db.VarChar(255)
+  email       String  @unique // UNIQUE INDEX for the first requirement
+  password_hash String @db.VarChar(255)
+  is_verified Boolean @default(false)
+  status      String  @default("unverified") 
+  last_login   DateTime?
+  
+  created_at  DateTime  @default(now())
+  
+  deleted_at  DateTime? // NULL = not deleted, allows re-registration
+  
+  @@map("users")
+}
