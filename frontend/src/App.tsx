@@ -1,7 +1,10 @@
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import Login from './components/Login';
 import Register from './components/Register';
+import AdminPanel from './components/AdminPanel';
+import PrivateRoute from './components/PrivateRoute';
+import Landing from './components/Landing';
 
 function App() {
   return (
@@ -9,7 +12,12 @@ function App() {
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
-        <Route path="/" element={<Navigate to="/login" />} />
+        <Route path="/admin" element={
+          <PrivateRoute>
+            <AdminPanel />
+          </PrivateRoute>
+        } />
+        <Route path="/" element={<Landing />} />
       </Routes>
     </AuthProvider>
   );
