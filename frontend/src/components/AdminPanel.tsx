@@ -56,6 +56,10 @@ const AdminPanel: React.FC = () => {
     fetchUsers();
   }, []);
 
+  useEffect(() => {
+    getUniqIdValue();
+  }, []);
+
   const showMessage = (msg: string, isError = false) => {
     if (isError) {
       setError(msg);
