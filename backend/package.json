@@ -4,9 +4,9 @@
   "description": "Backend for task 4",
   "main": "dist/index.js",
   "scripts": {
-    "start": "node dist/index.js",
+    "start": "prisma migrate deploy && node dist/index.js",
     "dev": "ts-node src/index.ts",
-    "build": "tsc",
+    "build": "prisma generate && tsc",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:studio": "prisma studio"
