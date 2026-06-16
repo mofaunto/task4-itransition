@@ -1,32 +1,17 @@
+import { Routes, Route, Navigate } from 'react-router-dom';
+import { AuthProvider } from './contexts/AuthContext';
+import Login from './components/Login';
+import Register from './components/Register';
+
 function App() {
-  const checkHealth = async () => {
-    try {
-      const response = await fetch('/api/health');
-      
-      if (response.ok) {
-        alert('Backend is connected');
-      } else {
-        alert('No Backend');
-      }
-    } catch {
-      alert('No Backend');
-    }
-  };
-
   return (
-    <div className="container-fluid">
-      <div className="text-center">
-        <h1>User Management System</h1>
-
-        <button 
-            type="button"
-            className="btn btn-primary"
-            onClick={checkHealth}
-          >
-            Health check
-          </button>
-      </div>
-    </div>
+    <AuthProvider>
+      <Routes>
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
+        <Route path="/" element={<Navigate to="/login" />} />
+      </Routes>
+    </AuthProvider>
   );
 }
 
