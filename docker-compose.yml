@@ -1,24 +1,25 @@
 version: '3.8'
 
 services:
-  backend:
-    build: ./backend
-    ports:
-      - "3000:3000"
-    environment:
-      - DATABASE_URL=postgresql://user:password@localhost:5432/user_management?schema=public
-      - JWT_SECRET=${JWT_SECRET:-my-secret-jwt-key-change-in-production}
+  # Backend and Frontend run locally during development (npm run dev)
+  # backend:
+  #   build: ./backend
+  #   ports:
+  #     - "3000:3000"
+  #   environment:
+  #     - DATABASE_URL=postgresql://user:password@localhost:5433/user_management?schema=public
+  #     - JWT_SECRET=${JWT_SECRET:-my-secret-jwt-key-change-in-production}
 
-  frontend:
-    build: ./frontend
-    ports:
-      - "5173:5173"
+  # frontend:
+  #   build: ./frontend
+  #   ports:
+  #     - "5173:5173"
 
   db:
     image: postgres:15-alpine
     restart: unless-stopped
     ports:
-      - "5432:5432"
+      - "5433:5432"
     environment:
       POSTGRES_USER: user
       POSTGRES_PASSWORD: password
