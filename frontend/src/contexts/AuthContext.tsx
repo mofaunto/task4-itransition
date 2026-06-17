@@ -28,13 +28,23 @@ export const useAuth = () => {
 };
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  // use localstorage for token, not ideal for real world application
+  const [token, setToken] = useState<string | null>(() => {
+    const saved = localStorage.getItem('token');
+    if (saved) {
+      api.defaults.headers.common['Authorization'] = `Bearer ${saved}`;
+    }
+    return saved;
+  });
+
   const [user, setUser] = useState<User | null>(null);
-  const [token, setToken] = useState<string | null>(localStorage.getItem('token'));
   const navigate = useNavigate();
 
   useEffect(() => {
     if (token) {
       api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+    } else {
+      delete api.defaults.headers.common['Authorization'];
     }
   }, [token]);
 
