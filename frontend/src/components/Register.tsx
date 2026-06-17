@@ -30,7 +30,15 @@ const Register: React.FC = () => {
       setSuccess(response.data.message || 'Registration successful! Please verify your email.');
       setTimeout(() => navigate('/login'), 3000);
     } catch (err: any) {
-      setError(err.response?.data?.error || 'Registration failed');
+      // Use the error message from the backend, or fallback to a generic one
+      const backendMessage = err.response?.data?.error;
+      if (backendMessage) {
+        setError(backendMessage);
+      } else if (err.message === 'Network Error') {
+        setError('Unable to reach the server. Please check your internet connection.');
+      } else {
+        setError('Registration failed. Please try again later.');
+      }
     } finally {
       setLoading(false);
     }

@@ -10,10 +10,15 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // CORS for frontend
+const corsOrigin = process.env.NODE_ENV === 'production' 
+    ? process.env.FRONTEND_URL 
+    : 'http://localhost:5173';
+
+// cors debug 
+console.log(`CORS origin set to: ${corsOrigin}`);
+
 app.use(cors({
-    origin: process.env.NODE_ENV === 'production' 
-        ? process.env.FRONTEND_URL 
-        : 'http://localhost:5173',
+    origin: corsOrigin,
     credentials: true
 }));
 

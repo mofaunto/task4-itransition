@@ -121,6 +121,37 @@ router.post('/delete', async (req: AuthRequest, res: Response) => {
   }
 });
 
+// forgot one requirement
+// /api/users/verify – bulk email verification
+router.post('/verify', async (req: AuthRequest, res: Response) => {
+  try {
+    const { userIds } = req.body;
+
+    if (!userIds || !Array.isArray(userIds) || userIds.length === 0) {
+      return res.status(400).json({ error: 'User IDs array is required' });
+    }
+
+    const result = await prisma.user.updateMany({
+      where: {
+        id: { in: userIds },
+        is_verified: false,
+        status: { not: 'blocked' },
+      },
+      data: {
+        is_verified: true,
+        status: 'active',
+      },
+    });
+    
+    res.json({ message: `${result.count} user(s) verified successfully`, count: result.count });
+  } catch (error) {
+    console.error('Verify error:', error);
+    res.status(500).json({ error: 'Server error' });
+  } finally {
+    await prisma.$disconnect();
+  }
+});
+
 // /api/users/delete-unverified
 router.post('/delete-unverified', async (req: AuthRequest, res: Response) => {
   try {

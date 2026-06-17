@@ -2,7 +2,7 @@ import { Router, Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import "dotenv/config"; 
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, Prisma } from '@prisma/client';
 
 const prisma = new PrismaClient();
 const JWT_SECRET = process.env.JWT_SECRET || 'secret-key-change-in-production';
@@ -31,8 +31,8 @@ const verifyToken = (req: any, res: Response, next: any) => {
   }
 };
 
-// POST /api/register - User Registration
-router.post('/register', async (req: Request<{}, { message?: string }, any>, res: Response) => {
+// POST /api/auth/register
+router.post('/register', async (req: Request, res: Response) => {
   try {
     const { name, email, password } = req.body;
 
@@ -40,14 +40,12 @@ router.post('/register', async (req: Request<{}, { message?: string }, any>, res
       return res.status(400).json({ error: 'All fields are required' });
     }
 
-    // Hash password
     const passwordHash = await bcrypt.hash(password, 10);
 
-    // create user
     const user = await prisma.user.create({
       data: {
         name,
-        email,
+        email: email.toLowerCase(), //just in case
         password_hash: passwordHash,
         is_verified: false,
         status: 'unverified',
@@ -64,19 +62,27 @@ router.post('/register', async (req: Request<{}, { message?: string }, any>, res
     });
 
   } catch (error: any) {
-    if (error.code === 'P2002') {
-      res.status(409).json({ error: 'Email already exists' });
-    } else {
-      console.error('Registration error:', error);
-      res.status(500).json({ error: 'Server error' });
+    // Handle known Prisma errors
+    if (error instanceof Prisma.PrismaClientKnownRequestError) {
+      if (error.code === 'P2002') {
+        // Unique constraint violation – this is expected, return a clear message
+        return res.status(409).json({ error: 'Email already exists' });
+      }
+      // Other Prisma errors
+      console.error('Prisma error during registration:', error);
+      return res.status(500).json({ error: 'Database error. Please try again later.' });
     }
+
+    // other unexpected errors
+    console.error('Unexpected registration error:', error);
+    res.status(500).json({ error: 'Registration failed. Please try again later.' });
   } finally {
-      await prisma.$disconnect();
-    }
+    await prisma.$disconnect();
+  }
 });
 
-// login api
-router.post('/login', async (req: Request<{}, { token?: string }, any>, res: Response) => {
+// POST /api/auth/login
+router.post('/login', async (req: Request, res: Response) => {
   try {
     const { email, password } = req.body;
 
@@ -84,34 +90,28 @@ router.post('/login', async (req: Request<{}, { token?: string }, any>, res: Res
       return res.status(400).json({ error: 'Email and password are required' });
     }
 
-    // Find user by email
     const user = await prisma.user.findFirst({
-        where: { email: { equals: email.toLowerCase() } },
-        select: { id: true, name: true, email: true, status: true, last_login: true, deleted_at: true, password_hash: true }
+      where: { email: { equals: email.toLowerCase() } },
+      select: { id: true, name: true, email: true, status: true, last_login: true, deleted_at: true, password_hash: true }
     });
 
-    // doesn't exist or deleted
     if (!user || user.deleted_at) {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
-    // check for block
     if (user.status === 'blocked') {
       return res.status(403).json({ error: 'Account is blocked' });
     }
 
     const isValid = await bcrypt.compare(password, user.password_hash);
-
     if (!isValid) {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
-    // Generate jwt token
     const token = jwt.sign(
       { userId: user.id, email: user.email }, JWT_SECRET, { expiresIn: '24h' }
     );
 
-    // Update last login time
     await prisma.user.update({
       where: { id: user.id },
       data: { last_login: new Date() }
@@ -130,29 +130,27 @@ router.post('/login', async (req: Request<{}, { token?: string }, any>, res: Res
 
   } catch (error: any) {
     console.error('Login error:', error);
-    res.status(500).json({ error: 'Server error' });
+    res.status(500).json({ error: 'Login failed. Please try again later.' });
   } finally {
     await prisma.$disconnect();
   }
 });
 
-// logout api
+// POST /api/auth/logout
 router.post('/logout', verifyToken, async (req: any, res: Response) => {
   try {
     const userId = req.user.userId;
-    
     res.json({
       message: 'Logged out successfully',
       userId
     });
-
   } catch (error: any) {
     console.error('Logout error:', error);
-    res.status(500).json({ error: 'Server error' });
+    res.status(500).json({ error: 'Logout failed' });
   }
 });
 
-// verify email api
+// GET /api/auth/verify-email
 router.get('/verify-email', async (req: Request, res: Response) => {
   try {
     const { userId } = req.query;
@@ -174,7 +172,6 @@ router.get('/verify-email', async (req: Request, res: Response) => {
       return res.status(403).json({ error: 'Account is blocked, cannot verify' });
     }
 
-    // Update status to active
     if (!user.is_verified) {
       await prisma.user.update({
         where: { id: user.id },
@@ -184,9 +181,9 @@ router.get('/verify-email', async (req: Request, res: Response) => {
 
     res.json({ message: 'Email verified successfully! User is now active.' });
 
-  } catch (error) {
+  } catch (error: any) {
     console.error('Verification error:', error);
-    res.status(500).json({ error: 'Server error' });
+    res.status(500).json({ error: 'Verification failed. Please try again.' });
   } finally {
     await prisma.$disconnect();
   }

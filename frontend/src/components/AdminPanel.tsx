@@ -76,11 +76,17 @@ const AdminPanel: React.FC = () => {
       setActionLoading(true);
       let response;
       const userIds = Array.from(selected);
+
       switch (action) {
         case 'block':
           if (userIds.length === 0) { showMessage('Select at least one user', true); return; }
           response = await api.post('/users/block', { userIds });
           showMessage(response.data.message);
+          // If current user is in the blocked list, log out, better for UX
+          if (currentUser && userIds.includes(currentUser.id)) {
+            setTimeout(() => logout(), 1000);
+            return;
+          }
           break;
         case 'unblock':
           if (userIds.length === 0) { showMessage('Select at least one user', true); return; }
@@ -102,6 +108,11 @@ const AdminPanel: React.FC = () => {
           response = await api.post('/users/delete-unverified');
           showMessage(response.data.message);
           break;
+        case 'verify':
+          if (userIds.length === 0) { showMessage('Select at least one user to verify', true); return; }
+          response = await api.post('/users/verify', { userIds });
+          showMessage(response.data.message);
+          break;
         default:
           return;
       }
@@ -111,17 +122,6 @@ const AdminPanel: React.FC = () => {
       showMessage(err.response?.data?.error || `Failed to ${action} users`, true);
     } finally {
       setActionLoading(false);
-    }
-  };
-
-  // Email verification emulation
-  const verifyUser = async (userId: number) => {
-    try {
-      await api.get(`/auth/verify-email?userId=${userId}`);
-      showMessage('User email verified successfully!');
-      await fetchUsers();
-    } catch (err: any) {
-      showMessage(err.response?.data?.error || 'Verification failed', true);
     }
   };
 
@@ -192,6 +192,11 @@ const AdminPanel: React.FC = () => {
                 <i className="bi bi-trash-fill"></i> Delete unverified
               </Button>
             </OverlayTrigger>
+            <OverlayTrigger placement="top" overlay={<Tooltip>Verify selected users (set to active)</Tooltip>}>
+              <Button variant="info" onClick={() => handleAction('verify')} disabled={actionLoading || selected.size === 0}>
+                <i className="bi bi-check-circle"></i> Verify
+              </Button>
+            </OverlayTrigger>
           </ButtonGroup>
           {actionLoading && <Spinner animation="border" size="sm" className="ms-3" />}
         </div>
@@ -208,14 +213,13 @@ const AdminPanel: React.FC = () => {
                 <th>Email</th>
                 <th>Last Login</th>
                 <th>Status</th>
-                <th style={{ width: '120px' }}>Actions</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={6} className="text-center py-5"><Spinner animation="border" /></td></tr>
+                <tr><td colSpan={5} className="text-center py-5"><Spinner animation="border" /></td></tr>
               ) : users.length === 0 ? (
-                <tr><td colSpan={6} className="text-center py-5">No users</td></tr>
+                <tr><td colSpan={5} className="text-center py-5">No users</td></tr>
               ) : (
                 users.map(user => (
                   <tr key={user.id}>
@@ -230,18 +234,6 @@ const AdminPanel: React.FC = () => {
                     <td>{user.email}</td>
                     <td>{formatDate(user.last_login)}</td>
                     <td>{getStatusBadge(user.status)}</td>
-                    <td>
-                      {!user.is_verified && user.status !== 'blocked' && (
-                        <Button
-                          variant="outline-primary"
-                          size="sm"
-                          onClick={() => verifyUser(user.id)}
-                          disabled={actionLoading}
-                        >
-                          Verify
-                        </Button>
-                      )}
-                    </td>
                   </tr>
                 ))
               )}
